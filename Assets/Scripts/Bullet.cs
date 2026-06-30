@@ -8,7 +8,7 @@ public class Bullet : MonoBehaviour
     [SerializeField, Min(0f)] private float hitRadius = 0.15f;
     [SerializeField] private LayerMask hitLayers;
 
-    private Vector2 moveDirection = Vector2.right;
+    private float moveDirection = 1f;
 
     private void OnEnable()
     {
@@ -17,7 +17,7 @@ public class Bullet : MonoBehaviour
 
     private void Update()
     {
-        transform.position += (Vector3)(moveDirection * speed * Time.deltaTime);
+        transform.position += Vector3.right * (moveDirection * speed * Time.deltaTime);
 
         Collider2D hit = Physics2D.OverlapCircle(transform.position, hitRadius, hitLayers);
 
@@ -36,11 +36,15 @@ public class Bullet : MonoBehaviour
         Destroy(gameObject);
     }
 
-    public void Launch(Vector2 direction)
+    public void Launch(float horizontalDirection)
     {
-        if (direction.sqrMagnitude > 0.001f)
+        if (!Mathf.Approximately(horizontalDirection, 0f))
         {
-            moveDirection = direction.normalized;
+            moveDirection = Mathf.Sign(horizontalDirection);
+
+            Vector3 scale = transform.localScale;
+            scale.x = Mathf.Abs(scale.x) * moveDirection;
+            transform.localScale = scale;
         }
     }
 

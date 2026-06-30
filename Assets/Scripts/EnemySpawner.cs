@@ -11,11 +11,11 @@ public class EnemySpawner : MonoBehaviour
     [Header("Spawn Settings")]
     [SerializeField, Min(0.01f)] private float spawnInterval = 2f;
     [SerializeField, Min(1)] private int maximumEnemies = 10;
+    [SerializeField, Min(0f)] private float playerExclusionRadius = 5f;
     [SerializeField] private bool spawnImmediately = true;
 
     private readonly List<EnemyController> spawnedEnemies = new List<EnemyController>();
     private float nextSpawnTime;
-    private int lastSpawnPoint = -1;
 
     private void Start()
     {
@@ -36,24 +36,25 @@ public class EnemySpawner : MonoBehaviour
     {
         RemoveDestroyedEnemies();
 
-        if (Time.time >= nextSpawnTime && spawnedEnemies.Count < maximumEnemies)
-        {
-            SpawnEnemy();
-            nextSpawnTime = Time.time + spawnInterval;
-        }
-    }
-
-    public void SpawnEnemy()
-    {
-        if (enemyPrefab == null || spawnPoints == null || spawnPoints.Length == 0)
+        if (spawnedEnemies.Count >= maximumEnemies || Time.time < nextSpawnTime)
         {
             return;
         }
 
-        int spawnIndex = GetRandomSpawnPointIndex();
-        Transform spawnPoint = spawnPoints[spawnIndex];
+        SpawnEnemy();
+        nextSpawnTime = Time.time + spawnInterval;
+    }
 
-        if (spawnPoint == null)
+    public void SpawnEnemy()
+    {
+        RemoveDestroyedEnemies();
+
+        if (spawnedEnemies.Count >= maximumEnemies || enemyPrefab == null)
+        {
+            return;
+        }
+
+        if (!TryGetValidSpawnPoint(out Transform spawnPoint))
         {
             return;
         }
@@ -63,32 +64,63 @@ public class EnemySpawner : MonoBehaviour
             spawnPoint.position,
             spawnPoint.rotation);
 
-        enemy.SetTarget(player);
         spawnedEnemies.Add(enemy);
     }
 
-    private int GetRandomSpawnPointIndex()
+    private bool TryGetValidSpawnPoint(out Transform spawnPoint)
     {
-        if (spawnPoints.Length == 1)
+        spawnPoint = null;
+
+        if (spawnPoints == null || spawnPoints.Length == 0)
         {
-            lastSpawnPoint = 0;
-            return 0;
+            return false;
         }
 
-        int index;
+        int startingIndex = Random.Range(0, spawnPoints.Length);
+        float exclusionRadiusSquared = playerExclusionRadius * playerExclusionRadius;
 
-        do
+        for (int offset = 0; offset < spawnPoints.Length; offset++)
         {
-            index = Random.Range(0, spawnPoints.Length);
-        }
-        while (index == lastSpawnPoint);
+            Transform candidate = spawnPoints[(startingIndex + offset) % spawnPoints.Length];
 
-        lastSpawnPoint = index;
-        return index;
+            if (candidate == null)
+            {
+                continue;
+            }
+
+            bool playerIsTooClose = player != null
+                && (candidate.position - player.position).sqrMagnitude <= exclusionRadiusSquared;
+
+            if (!playerIsTooClose)
+            {
+                spawnPoint = candidate;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void RemoveDestroyedEnemies()
     {
         spawnedEnemies.RemoveAll(enemy => enemy == null);
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        if (spawnPoints == null)
+        {
+            return;
+        }
+
+        Gizmos.color = Color.yellow;
+
+        foreach (Transform spawnPoint in spawnPoints)
+        {
+            if (spawnPoint != null)
+            {
+                Gizmos.DrawWireSphere(spawnPoint.position, playerExclusionRadius);
+            }
+        }
     }
 }
