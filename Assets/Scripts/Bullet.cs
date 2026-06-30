@@ -1,32 +1,52 @@
 using UnityEngine;
 
-[RequireComponent(typeof(Rigidbody2D))]
 public class Bullet : MonoBehaviour
 {
     [SerializeField, Min(0f)] private float speed = 12f;
     [SerializeField, Min(0f)] private float lifetime = 3f;
     [SerializeField, Min(0)] private int damage = 10;
+    [SerializeField, Min(0f)] private float hitRadius = 0.15f;
+    [SerializeField] private LayerMask hitLayers;
 
-    private Rigidbody2D body;
-
-    private void Awake()
-    {
-        body = GetComponent<Rigidbody2D>();
-    }
+    private Vector2 moveDirection = Vector2.right;
 
     private void OnEnable()
     {
         Destroy(gameObject, lifetime);
     }
 
-    public void Launch(Vector2 direction)
+    private void Update()
     {
-        body.linearVelocity = direction.normalized * speed;
+        transform.position += (Vector3)(moveDirection * speed * Time.deltaTime);
+
+        Collider2D hit = Physics2D.OverlapCircle(transform.position, hitRadius, hitLayers);
+
+        if (hit == null)
+        {
+            return;
+        }
+
+        Health health = hit.GetComponentInParent<Health>();
+
+        if (health != null)
+        {
+            health.TakeDamage(damage);
+        }
+
+        Destroy(gameObject);
     }
 
-    private void OnTriggerEnter2D(Collider2D other)
+    public void Launch(Vector2 direction)
     {
-        other.SendMessage("TakeDamage", damage, SendMessageOptions.DontRequireReceiver);
-        Destroy(gameObject);
+        if (direction.sqrMagnitude > 0.001f)
+        {
+            moveDirection = direction.normalized;
+        }
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = Color.red;
+        Gizmos.DrawWireSphere(transform.position, hitRadius);
     }
 }

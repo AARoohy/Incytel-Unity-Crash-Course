@@ -1,18 +1,17 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(Rigidbody2D))]
+[RequireComponent(typeof(Health))]
 public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
     [SerializeField, Min(0f)] private float moveSpeed = 5f;
-    [SerializeField] private InputActionReference moveAction;
-
-    [Header("Health")]
-    [SerializeField, Min(1)] private int maxHealth = 100;
+    [SerializeField, Min(0f)] private float jumpForce = 8f;
+    [SerializeField] private Transform groundCheck;
+    [SerializeField, Min(0f)] private float groundCheckRadius = 0.15f;
+    [SerializeField] private LayerMask groundLayers;
 
     [Header("Shooting")]
-    [SerializeField] private InputActionReference shootAction;
     [SerializeField] private GameObject bulletPrefab;
     [SerializeField] private Transform firePoint;
     [SerializeField, Min(0f)] private float fireCooldown = 0.2f;
@@ -23,69 +22,65 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private string idleParameter = "IsIdle";
     [SerializeField] private string shootParameter = "Shoot";
 
-    public int CurrentHealth { get; private set; }
-    public int MaxHealth => maxHealth;
-
     private Rigidbody2D body;
     private Camera mainCamera;
     private Vector2 movementInput;
     private float nextFireTime;
+    private bool jumpRequested;
+    private bool isGrounded;
 
     private void Awake()
     {
         body = GetComponent<Rigidbody2D>();
         mainCamera = Camera.main;
-        CurrentHealth = maxHealth;
-
         if (animator == null)
         {
             animator = GetComponentInChildren<Animator>();
         }
     }
 
-    private void OnEnable()
-    {
-        if (moveAction != null)
-        {
-            moveAction.action.Enable();
-        }
-
-        if (shootAction != null)
-        {
-            shootAction.action.Enable();
-            shootAction.action.performed += OnShoot;
-        }
-    }
-
-    private void OnDisable()
-    {
-        if (moveAction != null)
-        {
-            moveAction.action.Disable();
-        }
-
-        if (shootAction != null)
-        {
-            shootAction.action.performed -= OnShoot;
-            shootAction.action.Disable();
-        }
-    }
-
     private void Update()
     {
-        movementInput = moveAction == null
-            ? Vector2.zero
-            : moveAction.action.ReadValue<Vector2>().normalized;
+        float horizontal = Input.GetAxisRaw("Horizontal");
+        movementInput = new Vector2(horizontal, 0f);
+
+        Vector3 groundCheckPosition = groundCheck == null
+            ? transform.position
+            : groundCheck.position;
+
+        isGrounded = Physics2D.OverlapCircle(
+            groundCheckPosition,
+            groundCheckRadius,
+            groundLayers) != null;
+
+        if (Input.GetButtonDown("Jump") && isGrounded)
+        {
+            jumpRequested = true;
+        }
+
+        if (Input.GetMouseButtonDown(0))
+        {
+            Shoot();
+        }
 
         UpdateMovementAnimation();
     }
 
     private void FixedUpdate()
     {
-        body.MovePosition(body.position + movementInput * moveSpeed * Time.fixedDeltaTime);
+        Vector2 velocity = body.linearVelocity;
+        velocity.x = movementInput.x * moveSpeed;
+
+        if (jumpRequested)
+        {
+            velocity.y = jumpForce;
+            jumpRequested = false;
+        }
+
+        body.linearVelocity = velocity;
     }
 
-    private void OnShoot(InputAction.CallbackContext context)
+    private void Shoot()
     {
         if (Time.time < nextFireTime || bulletPrefab == null)
         {
@@ -118,13 +113,12 @@ public class PlayerController : MonoBehaviour
             mainCamera = Camera.main;
         }
 
-        if (mainCamera == null || Mouse.current == null)
+        if (mainCamera == null)
         {
             return transform.right;
         }
 
-        Vector2 mouseScreenPosition = Mouse.current.position.ReadValue();
-        Vector3 mouseWorldPosition = mainCamera.ScreenToWorldPoint(mouseScreenPosition);
+        Vector3 mouseWorldPosition = mainCamera.ScreenToWorldPoint(Input.mousePosition);
         Vector2 direction = mouseWorldPosition - spawnPosition;
 
         return direction.sqrMagnitude > 0.001f ? direction.normalized : transform.right;
@@ -142,35 +136,6 @@ public class PlayerController : MonoBehaviour
         SetBoolIfValid(idleParameter, !isMoving);
     }
 
-    public void TakeDamage(int amount)
-    {
-        if (amount <= 0 || CurrentHealth <= 0)
-        {
-            return;
-        }
-
-        CurrentHealth = Mathf.Max(CurrentHealth - amount, 0);
-
-        if (CurrentHealth == 0)
-        {
-            Die();
-        }
-    }
-
-    public void Heal(int amount)
-    {
-        if (amount > 0 && CurrentHealth > 0)
-        {
-            CurrentHealth = Mathf.Min(CurrentHealth + amount, maxHealth);
-        }
-    }
-
-    private void Die()
-    {
-        movementInput = Vector2.zero;
-        gameObject.SetActive(false);
-    }
-
     private void SetBoolIfValid(string parameterName, bool value)
     {
         if (!string.IsNullOrWhiteSpace(parameterName))
@@ -185,5 +150,12 @@ public class PlayerController : MonoBehaviour
         {
             animator.SetTrigger(parameterName);
         }
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Vector3 position = groundCheck == null ? transform.position : groundCheck.position;
+        Gizmos.color = isGrounded ? Color.green : Color.red;
+        Gizmos.DrawWireSphere(position, groundCheckRadius);
     }
 }
