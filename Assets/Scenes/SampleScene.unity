@@ -471,10 +471,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 1101317927285861356, guid: 3dec34a2739fa9043b5561d3e7acf893, type: 3}
-      propertyPath: bulletPrefab
-      value: 
-      objectReference: {fileID: 0}
     - target: {fileID: 4505016079093945290, guid: 3dec34a2739fa9043b5561d3e7acf893, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -518,18 +514,6 @@ PrefabInstance:
     - target: {fileID: 8459246959665888116, guid: 3dec34a2739fa9043b5561d3e7acf893, type: 3}
       propertyPath: m_Name
       value: Character
-      objectReference: {fileID: 0}
-    - target: {fileID: 8479620045715993958, guid: 3dec34a2739fa9043b5561d3e7acf893, type: 3}
-      propertyPath: m_BodyType
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 8479620045715993958, guid: 3dec34a2739fa9043b5561d3e7acf893, type: 3}
-      propertyPath: m_Constraints
-      value: 4
-      objectReference: {fileID: 0}
-    - target: {fileID: 8479620045715993958, guid: 3dec34a2739fa9043b5561d3e7acf893, type: 3}
-      propertyPath: m_GravityScale
-      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
